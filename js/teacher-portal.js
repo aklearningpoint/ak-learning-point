@@ -1,4 +1,4 @@
-// Teacher Portal: Universal Multi-Format Parser, Quiz Maker & Eco-Friendly Print
+// Teacher Portal: Universal Multi-Format Parser, Quiz Maker (Timer & Negative Marking) & Eco-Friendly Print
 
 function openTeacherPortal() {
   toggleDrawer();
@@ -87,6 +87,35 @@ function showTeacherSection(sec) {
           </div>
         </div>
 
+        <!-- NEW: Timer Mode & Negative Marking Settings -->
+        <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin:12px 0; border:1px solid #cbd5e1;">
+          <h4 style="color:var(--primary-navy); margin-bottom:10px; font-size:0.95rem;"><i class="fas fa-stopwatch" style="color:#d97706;"></i> Exam Rules & Timer Configuration</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Timer Type</label>
+              <select id="tqTimerType" onchange="handleTimerTypeChange()">
+                <option value="full">Total Quiz Timer (Minutes)</option>
+                <option value="per_question">Per Question Timer (Seconds)</option>
+                <option value="none">No Timer</option>
+              </select>
+            </div>
+            <div class="form-group" id="timerValueGroup">
+              <label id="timerValueLabel">Total Duration (Minutes)</label>
+              <input type="number" id="tqTimerValue" value="15" min="1">
+            </div>
+            <div class="form-group">
+              <label>Negative Marking</label>
+              <select id="tqNegativeMarking">
+                <option value="0">No Negative Marking (0)</option>
+                <option value="0.25">-0.25 (1/4th Mark)</option>
+                <option value="0.33">-0.33 (1/3rd Mark)</option>
+                <option value="0.50">-0.50 (1/2 Mark)</option>
+                <option value="1.00">-1.00 (Full Mark)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div style="display:flex; align-items:center; gap:15px; margin:10px 0;">
           <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
             <input type="checkbox" id="tqIsRewarding" onchange="toggleRewardingField()"> <strong>🎁 Mark as Rewarding Quiz</strong>
@@ -123,6 +152,25 @@ function showTeacherSection(sec) {
         </div>
       </div>
     `;
+  }
+}
+
+function handleTimerTypeChange() {
+  const type = document.getElementById("tqTimerType").value;
+  const grp = document.getElementById("timerValueGroup");
+  const lbl = document.getElementById("timerValueLabel");
+  const val = document.getElementById("tqTimerValue");
+
+  if (type === "none") {
+    grp.style.display = "none";
+  } else if (type === "per_question") {
+    grp.style.display = "block";
+    lbl.innerText = "Time Per Question (Seconds)";
+    val.value = "30";
+  } else {
+    grp.style.display = "block";
+    lbl.innerText = "Total Duration (Minutes)";
+    val.value = "15";
   }
 }
 
@@ -208,6 +256,9 @@ async function saveParsedQuiz(status) {
     board: document.getElementById("tqBoard").value,
     className: document.getElementById("tqClass").value,
     subject: document.getElementById("tqSubject").value,
+    timerType: document.getElementById("tqTimerType").value,
+    timerValue: parseInt(document.getElementById("tqTimerValue") ? document.getElementById("tqTimerValue").value : 0),
+    negativeMarking: parseFloat(document.getElementById("tqNegativeMarking").value),
     isRewarding: document.getElementById("tqIsRewarding").checked,
     passkey: document.getElementById("tqPasskey").value,
     status: status,
@@ -215,7 +266,7 @@ async function saveParsedQuiz(status) {
   };
 
   await API.post("saveQuiz", payload);
-  alert(`Quiz successfully saved as ${status}!`);
+  alert(`Quiz successfully saved as ${status} with customized timer & negative marking!`);
   showTeacherSection('list');
 }
 
