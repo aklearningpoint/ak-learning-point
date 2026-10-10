@@ -1,11 +1,25 @@
-// Teacher Portal: Complete Management, Universal Parser, Live Leaderboards, Inline Correction & Auto Score Recalculation
+// Teacher Portal: Complete Management, Universal Parser, Live Leaderboards, Inline Correction, Student Ban & Auto Score Recalculation
+
+// Storage Helpers
+function getTeacherData(key, fallback) {
+  const val = localStorage.getItem(key);
+  return val ? JSON.parse(val) : fallback;
+}
+function setTeacherData(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
 
 let activeTeacherQuizzes = [];
 
 function openTeacherPortal() {
-  toggleDrawer();
-  const enteredPass = prompt("Enter Teacher Access Password (Default: pass):");
-  if (enteredPass === "pass") {
+  if (typeof toggleDrawer === "function") toggleDrawer();
+
+  // Read dynamic teacher password from Admin Config
+  const appConfig = getTeacherData("ak_app_config", { teacherPass: "pass" });
+  const correctPass = appConfig.teacherPass || "pass";
+
+  const enteredPass = prompt("Enter Teacher Access Password:");
+  if (enteredPass === correctPass) {
     renderTeacherDashboard();
   } else if (enteredPass !== null) {
     alert("Incorrect Teacher Password!");
@@ -60,7 +74,7 @@ async function showTeacherSection(sec) {
             </select>
           </div>
           <div class="form-group">
-            <label>Class (All Classes Supported)</label>
+            <label>Class (All Standards Supported)</label>
             <select id="tqClass">
               <option value="Play">Play</option>
               <option value="Nur">Nursery</option>
@@ -150,10 +164,21 @@ async function showTeacherSection(sec) {
       </div>
     `;
   } else if (sec === 'list') {
-    container.innerHTML = `<p style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Fetching Quizzes...</p>`;
-    const res = await API.get("getQuizzes", { allStatus: "true" });
-    activeTeacherQuizzes = res.data || [];
+    // 1. Instant Local Display
+    activeTeacherQuizzes = getTeacherData("ak_teacher_quizzes", []);
     renderTeacherQuizList();
+
+    // 2. Background Sync
+    try {
+      const res = await API.get("getQuizzes", { allStatus: "true" });
+      if (res && res.data && res.data.length > 0) {
+        activeTeacherQuizzes = res.data;
+        setTeacherData("ak_teacher_quizzes", activeTeacherQuizzes);
+        renderTeacherQuizList();
+      }
+    } catch (err) {
+      console.warn("Using offline / local storage quiz list");
+    }
   }
 }
 
@@ -236,7 +261,7 @@ function toggleRewardingField() {
   document.getElementById("rewardingPassContainer").style.display = chk ? "block" : "none";
 }
 
-// Universal Text Parser
+// Universal Multi-Pattern Text Parser
 let parsedQuestionsBuffer = [];
 
 function parseRawQuestions() {
@@ -312,8 +337,9 @@ async function saveParsedQuiz(status) {
     return;
   }
 
-  const payload = {
-    title: document.getElementById("tqTitle").value || "Untitled Quiz",
+  const newQuiz = {
+    id: "qz_" + Date.now(),
+    title: document.getElementById("tqTitle").value.trim() || "Untitled Quiz",
     board: document.getElementById("tqBoard").value,
     className: document.getElementById("tqClass").value,
     subject: document.getElementById("tqSubject").value,
@@ -326,7 +352,14 @@ async function saveParsedQuiz(status) {
     questions: parsedQuestionsBuffer
   };
 
-  await API.post("saveQuiz", payload);
+  // 1. Instant Local Persistence
+  activeTeacherQuizzes = getTeacherData("ak_teacher_quizzes", []);
+  activeTeacherQuizzes.unshift(newQuiz);
+  setTeacherData("ak_teacher_quizzes", activeTeacherQuizzes);
+
+  // 2. Background Cloud Sync
+  API.post("saveQuiz", newQuiz);
+
   alert(`Quiz successfully saved as ${status}!`);
   showTeacherSection('list');
 }
@@ -336,7 +369,9 @@ async function togglePublishStatus(idx) {
   const quiz = activeTeacherQuizzes[idx];
   const newStatus = quiz.status === 'published' ? 'draft' : 'published';
   quiz.status = newStatus;
-  await API.post("updateQuizMeta", { id: quiz.id, status: newStatus });
+  
+  setTeacherData("ak_teacher_quizzes", activeTeacherQuizzes);
+  API.post("updateQuizMeta", { id: quiz.id, status: newStatus });
   renderTeacherQuizList();
 }
 
@@ -344,20 +379,21 @@ async function togglePublishStatus(idx) {
 async function deleteQuizPermanently(idx) {
   const quiz = activeTeacherQuizzes[idx];
   if (confirm(`Kya aap "${quiz.title}" ko permanently delete karna chahte hain? Sabhi records hat jayenge.`)) {
-    await API.post("deleteQuiz", { id: quiz.id });
     activeTeacherQuizzes.splice(idx, 1);
+    setTeacherData("ak_teacher_quizzes", activeTeacherQuizzes);
+    API.post("deleteQuiz", { id: quiz.id });
     renderTeacherQuizList();
   }
 }
 
-// Leaderboard View
+// Live Leaderboard View
 async function openQuizLeaderboard(idx) {
   const quiz = activeTeacherQuizzes[idx];
   const dynamicView = document.getElementById("dynamicView");
 
   dynamicView.innerHTML = `
     <div class="modal-overlay" style="display:flex;">
-      <div class="modal-card" style="max-width:700px;">
+      <div class="modal-card" style="max-width:720px;">
         <div class="modal-header">
           <div>
             <h3 style="color:var(--primary-navy); margin:0;">Leaderboard: ${quiz.title}</h3>
@@ -372,8 +408,20 @@ async function openQuizLeaderboard(idx) {
     </div>
   `;
 
-  const res = await API.get("getLeaderboard", { quizId: quiz.id });
-  const participants = res.data || [];
+  // 1. Local submissions filter
+  const localAttempts = (getTeacherData("ak_student_attempts", [])).filter(a => a.quizId === quiz.id);
+
+  // 2. Remote submissions fallback
+  let remoteAttempts = [];
+  try {
+    const res = await API.get("getLeaderboard", { quizId: quiz.id });
+    if (res && res.data) remoteAttempts = res.data;
+  } catch (e) {
+    console.warn("Using offline local leaderboard");
+  }
+
+  const allParticipants = [...localAttempts, ...remoteAttempts];
+  const participants = Array.from(new Map(allParticipants.map(p => [p.mobile + "_" + (p.timestamp || p.id), p])).values());
   const container = document.getElementById("leaderboardListContainer");
 
   if (participants.length === 0) {
@@ -382,7 +430,7 @@ async function openQuizLeaderboard(idx) {
   }
 
   // Sort by Score descending
-  participants.sort((a, b) => b.score - a.score);
+  participants.sort((a, b) => Number(b.score) - Number(a.score));
 
   container.innerHTML = `
     <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
@@ -406,7 +454,7 @@ async function openQuizLeaderboard(idx) {
             <td style="padding:6px; font-weight:700; color:#16a34a;">${p.score}/${p.totalMarks}</td>
             <td style="padding:6px;">${p.percentage}%</td>
             <td style="padding:6px;">
-              <button onclick="deleteParticipantRecord('${quiz.id}', '${p.id}',${idx})" style="background:#fee2e2; color:#dc2626; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" title="Delete Record">
+              <button onclick="deleteParticipantRecord('${quiz.id}', '${p.mobile \vert{}\vert{} p.id}',${idx})" style="background:#fee2e2; color:#dc2626; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" title="Delete Record">
                 <i class="fas fa-trash"></i>
               </button>
             </td>
@@ -449,10 +497,14 @@ function viewParticipantAnswers(participant, quiz) {
   `;
 }
 
-// Delete Participant Attempt
-async function deleteParticipantRecord(quizId, participantId, quizIdx) {
+// Delete Participant Attempt Record
+async function deleteParticipantRecord(quizId, identifier, quizIdx) {
   if (confirm("Kya aap is student ke result ko leaderboard se delete karna chahte hain?")) {
-    await API.post("deleteParticipant", { quizId: quizId, participantId: participantId });
+    let attempts = getTeacherData("ak_student_attempts", []);
+    attempts = attempts.filter(a => !(a.quizId === quizId && (a.mobile === identifier || a.id === identifier)));
+    setTeacherData("ak_student_attempts", attempts);
+
+    API.post("deleteParticipant", { quizId: quizId, identifier: identifier });
     openQuizLeaderboard(quizIdx);
   }
 }
@@ -536,13 +588,42 @@ async function saveEditedQuizChanges(idx) {
   editingQuizBuffer.title = document.getElementById("editQuizTitle").value;
   editingQuizBuffer.passkey = document.getElementById("editQuizPasskey").value;
 
-  // Recalculate trigger on server
-  await API.post("updateQuizAndRecalculate", {
+  activeTeacherQuizzes[idx] = editingQuizBuffer;
+  setTeacherData("ak_teacher_quizzes", activeTeacherQuizzes);
+
+  // Recalculate student scores locally across existing submissions
+  let allAttempts = getTeacherData("ak_student_attempts", []);
+  const negMark = parseFloat(editingQuizBuffer.negativeMarking || 0);
+  const totalQ = editingQuizBuffer.questions.length;
+
+  allAttempts = allAttempts.map(att => {
+    if (att.quizId === editingQuizBuffer.id && att.answers) {
+      let correct = 0;
+      let wrong = 0;
+      editingQuizBuffer.questions.forEach((q, qIndex) => {
+        const uAns = att.answers[qIndex];
+        if (uAns !== undefined) {
+          if (uAns === q.correctAnswer) correct++;
+          else wrong++;
+        }
+      });
+      const penalty = wrong * negMark;
+      const net = Math.max(0, correct - penalty).toFixed(2);
+      att.score = net;
+      att.totalMarks = totalQ;
+      att.percentage = ((net / totalQ) * 100).toFixed(1);
+    }
+    return att;
+  });
+
+  setTeacherData("ak_student_attempts", allAttempts);
+
+  // Cloud API trigger for backend recalculation
+  API.post("updateQuizAndRecalculate", {
     quiz: editingQuizBuffer
   });
 
-  activeTeacherQuizzes[idx] = editingQuizBuffer;
-  alert("Quiz updated successfully! Sabhi students ke scores nayi answer key ke hisaab se recalculate ho gaye hain.");
+  alert("Quiz updated successfully! Sabhi students ke marks nayi answer key ke anusaar recalculate ho chuke hain.");
   renderTeacherDashboard();
 }
 
