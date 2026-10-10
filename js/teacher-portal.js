@@ -1,4 +1,6 @@
-// Teacher Portal: Universal Multi-Format Parser, Quiz Maker (Timer & Negative Marking) & Eco-Friendly Print
+// Teacher Portal: Complete Management, Universal Parser, Live Leaderboards, Inline Correction & Auto Score Recalculation
+
+let activeTeacherQuizzes = [];
 
 function openTeacherPortal() {
   toggleDrawer();
@@ -14,63 +16,68 @@ function renderTeacherDashboard() {
   document.getElementById("dynamicView").innerHTML = `
     <div style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#f8fafc; z-index:3000; display:flex; flex-direction:column;">
       
-      <!-- Teacher Top Nav -->
+      <!-- Top Bar -->
       <div style="height:55px; background:var(--primary-navy); color:white; display:flex; align-items:center; justify-content:space-between; padding:0 16px;">
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fas fa-chalkboard-teacher" style="color:var(--brand-gold);"></i>
-          <strong>Teacher Portal</strong>
+          <strong>Teacher Control Panel</strong>
         </div>
         <button onclick="closeDynamicView()" style="background:none; border:none; color:white; font-size:1.3rem; cursor:pointer;"><i class="fas fa-times"></i></button>
       </div>
 
-      <!-- Teacher Navigation -->
-      <div style="background:white; border-bottom:1px solid var(--border-color); display:flex; padding:8px 12px; gap:8px;">
+      <!-- Navigation Bar -->
+      <div style="background:white; border-bottom:1px solid var(--border-color); display:flex; overflow-x:auto; padding:8px 12px; gap:8px;">
         <button class="btn-primary" style="width:auto; padding:6px 14px; font-size:0.85rem; margin:0;" onclick="showTeacherSection('maker')">+ Create Quiz (Smart Parser)</button>
-        <button class="btn-primary" style="width:auto; padding:6px 14px; font-size:0.85rem; margin:0; background:#0284c7;" onclick="showTeacherSection('list')">Quiz List & Print</button>
+        <button class="btn-primary" style="width:auto; padding:6px 14px; font-size:0.85rem; margin:0; background:#0284c7;" onclick="showTeacherSection('list')">Manage Quizzes & Leaderboards</button>
       </div>
 
-      <!-- Teacher Content Body -->
-      <div id="teacherContentBody" style="flex:1; overflow-y:auto; padding:16px; max-width:800px; margin:0 auto; width:100%;">
-        <!-- Dynamic Screen -->
-      </div>
+      <!-- Content View -->
+      <div id="teacherContentBody" style="flex:1; overflow-y:auto; padding:16px; max-width:850px; margin:0 auto; width:100%;"></div>
 
     </div>
   `;
-  showTeacherSection('maker');
+  showTeacherSection('list');
 }
 
-function showTeacherSection(sec) {
+async function showTeacherSection(sec) {
   const container = document.getElementById("teacherContentBody");
 
   if (sec === 'maker') {
     container.innerHTML = `
       <div class="modal-card" style="max-width:100%;">
-        <h3 style="color:var(--primary-navy); margin-bottom:12px;">Smart Quiz Maker & Parser</h3>
+        <h3 style="color:var(--primary-navy); margin-bottom:12px;">Create New Quiz / Test</h3>
         
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <div class="form-group">
             <label>Quiz Title / Chapter Name</label>
-            <input type="text" id="tqTitle" placeholder="e.g. Chapter 3: Atmosphere" required>
+            <input type="text" id="tqTitle" placeholder="e.g. Chapter 3: Atmosphere & Climate" required>
           </div>
           <div class="form-group">
             <label>Board</label>
             <select id="tqBoard">
-              <option value="CBSE">CBSE</option>
+              <option value="CBSE">CBSE Board</option>
               <option value="BSEB">BSEB (Bihar Board)</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Class</label>
+            <label>Class (All Classes Supported)</label>
             <select id="tqClass">
-              <option value="Class 10">Class 10</option>
-              <option value="Class 9">Class 9</option>
-              <option value="Class 8">Class 8</option>
-              <option value="Class 7">Class 7</option>
-              <option value="Class 12">Class 12</option>
               <option value="Play">Play</option>
               <option value="Nur">Nursery</option>
               <option value="LKG">LKG</option>
               <option value="UKG">UKG</option>
+              <option value="Class 1">Class 1</option>
+              <option value="Class 2">Class 2</option>
+              <option value="Class 3">Class 3</option>
+              <option value="Class 4">Class 4</option>
+              <option value="Class 5">Class 5</option>
+              <option value="Class 6">Class 6</option>
+              <option value="Class 7">Class 7</option>
+              <option value="Class 8">Class 8</option>
+              <option value="Class 9">Class 9</option>
+              <option value="Class 10">Class 10</option>
+              <option value="Class 11">Class 11</option>
+              <option value="Class 12">Class 12</option>
             </select>
           </div>
           <div class="form-group">
@@ -83,13 +90,18 @@ function showTeacherSection(sec) {
               <option value="S.St">S.St</option>
               <option value="G.K">G.K</option>
               <option value="Computer">Computer</option>
+              <option value="Urdu">Urdu</option>
+              <option value="History">History</option>
+              <option value="Geography">Geography</option>
+              <option value="Economics">Economics</option>
+              <option value="Civics">Civics</option>
             </select>
           </div>
         </div>
 
-        <!-- NEW: Timer Mode & Negative Marking Settings -->
+        <!-- Timer & Penalty Configurations -->
         <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin:12px 0; border:1px solid #cbd5e1;">
-          <h4 style="color:var(--primary-navy); margin-bottom:10px; font-size:0.95rem;"><i class="fas fa-stopwatch" style="color:#d97706;"></i> Exam Rules & Timer Configuration</h4>
+          <h4 style="color:var(--primary-navy); margin-bottom:10px; font-size:0.95rem;"><i class="fas fa-stopwatch" style="color:#d97706;"></i> Exam Settings</h4>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
             <div class="form-group">
               <label>Timer Type</label>
@@ -106,53 +118,98 @@ function showTeacherSection(sec) {
             <div class="form-group">
               <label>Negative Marking</label>
               <select id="tqNegativeMarking">
-                <option value="0">No Negative Marking (0)</option>
-                <option value="0.25">-0.25 (1/4th Mark)</option>
-                <option value="0.33">-0.33 (1/3rd Mark)</option>
-                <option value="0.50">-0.50 (1/2 Mark)</option>
+                <option value="0">No Penalty (0)</option>
+                <option value="0.25">-0.25 (1/4th)</option>
+                <option value="0.33">-0.33 (1/3rd)</option>
+                <option value="0.50">-0.50 (1/2)</option>
                 <option value="1.00">-1.00 (Full Mark)</option>
               </select>
             </div>
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:15px; margin:10px 0;">
-          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-            <input type="checkbox" id="tqIsRewarding" onchange="toggleRewardingField()"> <strong>🎁 Mark as Rewarding Quiz</strong>
+        <!-- Rewarding Quiz Configuration -->
+        <div style="background:#fff7ed; padding:12px; border-radius:8px; border:1px solid #ffedd5; margin-bottom:12px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="tqIsRewarding" onchange="toggleRewardingField()">
+            <strong style="color:#c2410c;">🎁 Enable Rewarding Quiz Mode (Passkey Required)</strong>
           </label>
-          <input type="text" id="tqPasskey" placeholder="Enter Quiz Passkey" style="display:none; padding:6px; border:1px solid #cbd5e1; border-radius:6px;">
+          <div id="rewardingPassContainer" style="display:none; margin-top:8px;">
+            <label style="font-size:0.8rem; font-weight:600;">Secret Access Passkey</label>
+            <input type="text" id="tqPasskey" placeholder="Enter Quiz Passkey" style="margin-top:4px;">
+          </div>
         </div>
 
         <div class="form-group">
           <label>Paste Questions Text (Any AI / Book Format)</label>
-          <textarea id="tqRawText" rows="7" style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:8px; font-family:monospace;" placeholder="Example Format:&#10;Q1. What is the capital of India?&#10;a) Mumbai&#10;b) New Delhi&#10;c) Kolkata&#10;d) Chennai&#10;Ans: b"></textarea>
+          <textarea id="tqRawText" rows="7" style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:8px; font-family:monospace;" placeholder="Example:&#10;Q1. What is the process of food making in plants?&#10;a) Respiration&#10;b) Photosynthesis&#10;c) Transpiration&#10;d) Nutrition&#10;Ans: b"></textarea>
         </div>
 
-        <div style="display:flex; gap:10px;">
-          <button class="btn-primary" style="background:#7c3aed;" onclick="parseRawQuestions()"><i class="fas fa-magic"></i> Parse Questions</button>
-        </div>
-
+        <button class="btn-primary" style="background:#7c3aed;" onclick="parseRawQuestions()"><i class="fas fa-magic"></i> Parse Questions</button>
         <div id="parsedPreviewArea" style="margin-top:16px;"></div>
       </div>
     `;
   } else if (sec === 'list') {
+    container.innerHTML = `<p style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Fetching Quizzes...</p>`;
+    const res = await API.get("getQuizzes", { allStatus: "true" });
+    activeTeacherQuizzes = res.data || [];
+    renderTeacherQuizList();
+  }
+}
+
+function renderTeacherQuizList() {
+  const container = document.getElementById("teacherContentBody");
+
+  if (activeTeacherQuizzes.length === 0) {
     container.innerHTML = `
-      <div class="modal-card" style="max-width:100%;">
-        <h3 style="color:var(--primary-navy); margin-bottom:12px;">Active Quizzes & Print Center</h3>
-        <div class="section-card" style="margin-bottom:10px;">
-          <div style="flex:1;">
-            <h4>Sample Class 10 Science Quiz</h4>
-            <small style="color:var(--text-muted);">10 Questions • CBSE</small>
-            <div style="margin-top:8px; display:flex; gap:8px;">
-              <button class="btn-primary" style="width:auto; padding:6px 12px; font-size:0.8rem; margin:0; background:#059669;" onclick="printEcoFriendlyQuiz('Class 10 Science Quiz')">
-                <i class="fas fa-print"></i> Eco-Friendly A4 Print
-              </button>
+      <div class="modal-card" style="text-align:center; padding:30px;">
+        <h3>No Quizzes Available</h3>
+        <p style="color:var(--text-muted); margin:10px 0;">Create your first test using the Smart Parser!</p>
+        <button class="btn-primary" onclick="showTeacherSection('maker')">+ Create Quiz</button>
+      </div>
+    `;
+    return;
+  }
+
+  let html = activeTeacherQuizzes.map((q, idx) => {
+    const isDraft = q.status === 'draft';
+    return `
+      <div class="modal-card" style="max-width:100%; margin-bottom:12px; border-left: 5px solid ${isDraft ? '#94a3b8' : '#16a34a'};">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+          <div>
+            <h3 style="color:var(--primary-navy); margin-bottom:4px;">${q.title}</h3>
+            <div style="font-size:0.85rem; color:var(--text-muted);">
+              <strong>${q.board}</strong> | <strong>${q.className}</strong> | <strong>${q.subject}</strong> • ${q.questions ? q.questions.length : 0} Questions
+              ${q.isRewarding ? `<span style="background:#fee2e2; color:#dc2626; padding:2px 6px; border-radius:4px; font-weight:700; margin-left:6px;">🎁 Code: ${q.passkey}</span>` : ''}
+              <span style="background:${isDraft ? '#e2e8f0' : '#dcfce7'}; color:${isDraft ? '#475569' : '#16a34a'}; padding:2px 6px; border-radius:4px; font-weight:700; margin-left:4px;">
+                ${isDraft ? 'Draft (Coming Soon)' : 'Published Live'}
+              </span>
             </div>
+          </div>
+          
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button onclick="togglePublishStatus(${idx})" class="btn-primary" style="width:auto; padding:5px 10px; font-size:0.8rem; margin:0; background:${isDraft ? '#16a34a' : '#64748b'};">
+              <i class="fas ${isDraft ? 'fa-upload' : 'fa-eye-slash'}"></i> ${isDraft ? 'Publish' : 'Unpublish'}
+            </button>
+            <button onclick="openQuizLeaderboard(${idx})" class="btn-primary" style="width:auto; padding:5px 10px; font-size:0.8rem; margin:0; background:#0284c7;">
+              <i class="fas fa-trophy"></i> Leaderboard
+            </button>
+            <button onclick="openQuizEditorModal(${idx})" class="btn-primary" style="width:auto; padding:5px 10px; font-size:0.8rem; margin:0; background:#d97706;">
+              <i class="fas fa-edit"></i> Edit / Keys
+            </button>
+            <button onclick="printEcoFriendlyQuiz('${q.title}')" class="btn-primary" style="width:auto; padding:5px 10px; font-size:0.8rem; margin:0; background:#059669;">
+              <i class="fas fa-print"></i> Print
+            </button>
+            <button onclick="deleteQuizPermanently(${idx})" class="btn-primary" style="width:auto; padding:5px 10px; font-size:0.8rem; margin:0; background:#dc2626;">
+              <i class="fas fa-trash"></i>
+            </button>
           </div>
         </div>
       </div>
     `;
-  }
+  }).join("");
+
+  container.innerHTML = `<h3 style="color:var(--primary-navy); margin-bottom:12px;">Active Quiz List</h3>${html}`;
 }
 
 function handleTimerTypeChange() {
@@ -176,10 +233,10 @@ function handleTimerTypeChange() {
 
 function toggleRewardingField() {
   const chk = document.getElementById("tqIsRewarding").checked;
-  document.getElementById("tqPasskey").style.display = chk ? "inline-block" : "none";
+  document.getElementById("rewardingPassContainer").style.display = chk ? "block" : "none";
 }
 
-// Universal Multi-Pattern Text Parser
+// Universal Text Parser
 let parsedQuestionsBuffer = [];
 
 function parseRawQuestions() {
@@ -195,7 +252,6 @@ function parseRawQuestions() {
   let currentQ = null;
 
   lines.forEach(line => {
-    // Detect question start: Q1., 1., 1), Question 1:, प्रश्न 1.
     if (/^(Q\d+[\.:\)]|\d+[\.:\)]|Question\s*\d+[\.:\)]|प्रश्न\s*\d+[\.:\)]|\([ivx]+\)|[ivx]+[\.:\)])/i.test(line)) {
       if (currentQ) parsedQuestionsBuffer.push(currentQ);
       currentQ = {
@@ -204,13 +260,11 @@ function parseRawQuestions() {
         correctAnswer: 0
       };
     }
-    // Detect options: a), (a), [a], A., (क), (ख)
     else if (/^(\([a-d]\)|[a-d][\.:\)]|\[[a-d]\]|\([क-घ]\)|[क-घ][\.:\)])/i.test(line)) {
       if (currentQ) {
         currentQ.options.push(line.replace(/^(\([a-d]\)|[a-d][\.:\)]|\[[a-d]\]|\([क-घ]\)|[क-घ][\.:\)])/i, "").trim());
       }
     }
-    // Detect answer line: Ans: b, Answer: (b), उत्तर: ख
     else if (/^(Ans|Answer|उत्तर)[\s\.:]+/i.test(line)) {
       if (currentQ) {
         if (/b|\(b\)|ख/i.test(line)) currentQ.correctAnswer = 1;
@@ -222,20 +276,19 @@ function parseRawQuestions() {
   });
 
   if (currentQ) parsedQuestionsBuffer.push(currentQ);
-
   renderParsedPreview();
 }
 
 function renderParsedPreview() {
   const container = document.getElementById("parsedPreviewArea");
   if (parsedQuestionsBuffer.length === 0) {
-    container.innerHTML = `<p style="color:#dc2626;">Koi questions parse nahi ho sake! Check format.</p>`;
+    container.innerHTML = `<p style="color:#dc2626;">Koi questions parse nahi ho sake! Format verify karein.</p>`;
     return;
   }
 
   container.innerHTML = `
     <div style="background:#f1f5f9; padding:12px; border-radius:8px;">
-      <h4 style="color:#16a34a; margin-bottom:8px;">✅ Successfully Parsed ${parsedQuestionsBuffer.length} Questions:</h4>
+      <h4 style="color:#16a34a; margin-bottom:8px;">✅ Parsed ${parsedQuestionsBuffer.length} Questions:</h4>
       ${parsedQuestionsBuffer.map((q, idx) => `
         <div style="padding:8px 0; border-bottom:1px solid #cbd5e1; font-size:0.9rem;">
           <strong>Q${idx + 1}:${q.question}</strong><br>
@@ -243,31 +296,254 @@ function renderParsedPreview() {
         </div>
       `).join("")}
       <div style="display:flex; gap:10px; margin-top:12px;">
-        <button class="btn-primary" style="background:#0284c7;" onclick="saveParsedQuiz('draft')">Save as Draft (Upcoming)</button>
-        <button class="btn-primary" style="background:#16a34a;" onclick="saveParsedQuiz('published')">Publish Live Now</button>
+        <button class="btn-primary" style="background:#64748b;" onclick="saveParsedQuiz('draft')">Save as Draft (Coming Soon)</button>
+        <button class="btn-primary" style="background:#16a34a;" onclick="saveParsedQuiz('published')">Publish Live</button>
       </div>
     </div>
   `;
 }
 
 async function saveParsedQuiz(status) {
+  const isRewarding = document.getElementById("tqIsRewarding").checked;
+  const passkey = document.getElementById("tqPasskey").value.trim();
+
+  if (isRewarding && !passkey) {
+    alert("Rewarding Quiz ke liye Passkey code dalna mandatory hai!");
+    return;
+  }
+
   const payload = {
     title: document.getElementById("tqTitle").value || "Untitled Quiz",
     board: document.getElementById("tqBoard").value,
     className: document.getElementById("tqClass").value,
     subject: document.getElementById("tqSubject").value,
     timerType: document.getElementById("tqTimerType").value,
-    timerValue: parseInt(document.getElementById("tqTimerValue") ? document.getElementById("tqTimerValue").value : 0),
-    negativeMarking: parseFloat(document.getElementById("tqNegativeMarking").value),
-    isRewarding: document.getElementById("tqIsRewarding").checked,
-    passkey: document.getElementById("tqPasskey").value,
+    timerValue: parseInt(document.getElementById("tqTimerValue").value || 15),
+    negativeMarking: parseFloat(document.getElementById("tqNegativeMarking").value || 0),
+    isRewarding: isRewarding,
+    passkey: passkey,
     status: status,
     questions: parsedQuestionsBuffer
   };
 
   await API.post("saveQuiz", payload);
-  alert(`Quiz successfully saved as ${status} with customized timer & negative marking!`);
+  alert(`Quiz successfully saved as ${status}!`);
   showTeacherSection('list');
+}
+
+// 1-Click Publish / Unpublish Toggle
+async function togglePublishStatus(idx) {
+  const quiz = activeTeacherQuizzes[idx];
+  const newStatus = quiz.status === 'published' ? 'draft' : 'published';
+  quiz.status = newStatus;
+  await API.post("updateQuizMeta", { id: quiz.id, status: newStatus });
+  renderTeacherQuizList();
+}
+
+// Permanent Quiz Delete
+async function deleteQuizPermanently(idx) {
+  const quiz = activeTeacherQuizzes[idx];
+  if (confirm(`Kya aap "${quiz.title}" ko permanently delete karna chahte hain? Sabhi records hat jayenge.`)) {
+    await API.post("deleteQuiz", { id: quiz.id });
+    activeTeacherQuizzes.splice(idx, 1);
+    renderTeacherQuizList();
+  }
+}
+
+// Leaderboard View
+async function openQuizLeaderboard(idx) {
+  const quiz = activeTeacherQuizzes[idx];
+  const dynamicView = document.getElementById("dynamicView");
+
+  dynamicView.innerHTML = `
+    <div class="modal-overlay" style="display:flex;">
+      <div class="modal-card" style="max-width:700px;">
+        <div class="modal-header">
+          <div>
+            <h3 style="color:var(--primary-navy); margin:0;">Leaderboard: ${quiz.title}</h3>
+            <small style="color:var(--text-muted);">${quiz.className} • ${quiz.board}</small>
+          </div>
+          <button class="close-btn" onclick="renderTeacherDashboard()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="leaderboardListContainer" style="margin-top:10px; max-height:60vh; overflow-y:auto;">
+          <p style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading participant results...</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const res = await API.get("getLeaderboard", { quizId: quiz.id });
+  const participants = res.data || [];
+  const container = document.getElementById("leaderboardListContainer");
+
+  if (participants.length === 0) {
+    container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">Abhi kisi student ne is quiz ko attempt nahi kiya hai.</p>`;
+    return;
+  }
+
+  // Sort by Score descending
+  participants.sort((a, b) => b.score - a.score);
+
+  container.innerHTML = `
+    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+      <thead>
+        <tr style="background:#f1f5f9; text-align:left; border-bottom:2px solid #cbd5e1;">
+          <th style="padding:6px;">Rank</th>
+          <th style="padding:6px;">Student Name</th>
+          <th style="padding:6px;">Mobile</th>
+          <th style="padding:6px;">Score</th>
+          <th style="padding:6px;">Accuracy</th>
+          <th style="padding:6px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${participants.map((p, pIdx) => `
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:6px; font-weight:700;">#${pIdx + 1}</td>
+            <td style="padding:6px; cursor:pointer; color:var(--brand-blue); font-weight:600;" onclick='viewParticipantAnswers(${JSON.stringify(p)}, ${JSON.stringify(quiz)})'>${p.studentName} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i>
+            </td>
+            <td style="padding:6px;">${p.mobile || 'N/A'}</td>
+            <td style="padding:6px; font-weight:700; color:#16a34a;">${p.score}/${p.totalMarks}</td>
+            <td style="padding:6px;">${p.percentage}%</td>
+            <td style="padding:6px;">
+              <button onclick="deleteParticipantRecord('${quiz.id}', '${p.id}',${idx})" style="background:#fee2e2; color:#dc2626; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" title="Delete Record">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// Student Sheet Details Modal
+function viewParticipantAnswers(participant, quiz) {
+  let solHtml = quiz.questions.map((q, idx) => {
+    const userChoice = participant.answers ? participant.answers[idx] : undefined;
+    const isCorrect = userChoice === q.correctAnswer;
+    return `
+      <div style="padding:8px 0; border-bottom:1px solid #e2e8f0; font-size:0.85rem;">
+        <strong>Q${idx + 1}: ${q.question}</strong>
+        <div style="margin-top:4px;">
+          <span style="color:${isCorrect ? '#16a34a' : '#dc2626'}; font-weight:600;">Student Answer: ${userChoice !== undefined ? q.options[userChoice] : 'Unattempted'}</span> | 
+          <span style="color:#16a34a;">Correct Answer: ${q.options[q.correctAnswer]}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  document.getElementById("dynamicView").innerHTML += `
+    <div class="modal-overlay" style="display:flex; z-index:3500;" id="stSheetModal">
+      <div class="modal-card" style="max-height:85vh; overflow-y:auto; max-width:600px;">
+        <div class="modal-header">
+          <div>
+            <h4 style="margin:0; color:var(--primary-navy);">${participant.studentName}'s Attempt Sheet</h4>
+            <small style="color:var(--text-muted);">Mobile: ${participant.mobile} | Score: ${participant.score}/${participant.totalMarks}</small>
+          </div>
+          <button class="close-btn" onclick="document.getElementById('stSheetModal').remove()"><i class="fas fa-times"></i></button>
+        </div>
+        ${solHtml}
+      </div>
+    </div>
+  `;
+}
+
+// Delete Participant Attempt
+async function deleteParticipantRecord(quizId, participantId, quizIdx) {
+  if (confirm("Kya aap is student ke result ko leaderboard se delete karna chahte hain?")) {
+    await API.post("deleteParticipant", { quizId: quizId, participantId: participantId });
+    openQuizLeaderboard(quizIdx);
+  }
+}
+
+// Quiz Details & Question Editing with Auto Score Recalculation
+let editingQuizBuffer = null;
+
+function openQuizEditorModal(idx) {
+  editingQuizBuffer = JSON.parse(JSON.stringify(activeTeacherQuizzes[idx]));
+
+  let qListHtml = editingQuizBuffer.questions.map((q, qIdx) => `
+    <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #cbd5e1;">
+      <div class="form-group" style="margin-bottom:6px;">
+        <label>Q${qIdx + 1} Question Text</label>
+        <input type="text" value="${q.question}" onchange="updateQuestionText(${qIdx}, this.value)">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+        ${q.options.map((opt, oIdx) => `
+          <div>
+            <label style="font-size:0.75rem;">Option ${oIdx + 1}</label>
+            <input type="text" value="${opt}" onchange="updateOptionText(${qIdx},${oIdx}, this.value)" style="font-size:0.85rem; padding:6px;">
+          </div>
+        `).join('')}
+      </div>
+      <div>
+        <label style="font-size:0.8rem; font-weight:700; color:#16a34a;">Correct Option Index (0 = A, 1 = B, 2 = C, 3 = D):</label>
+        <select onchange="updateCorrectAnswer(${qIdx}, this.value)" style="padding:6px; border-radius:6px; font-weight:700;">
+          <option value="0" ${q.correctAnswer === 0 ? 'selected' : ''}>Option A (1)</option>
+          <option value="1" ${q.correctAnswer === 1 ? 'selected' : ''}>Option B (2)</option>
+          <option value="2" ${q.correctAnswer === 2 ? 'selected' : ''}>Option C (3)</option>
+          <option value="3" ${q.correctAnswer === 3 ? 'selected' : ''}>Option D (4)</option>
+        </select>
+      </div>
+    </div>
+  `).join("");
+
+  document.getElementById("dynamicView").innerHTML = `
+    <div class="modal-overlay" style="display:flex;">
+      <div class="modal-card" style="max-width:750px; max-height:90vh; overflow-y:auto;">
+        <div class="modal-header">
+          <h3>Edit Quiz: ${editingQuizBuffer.title}</h3>
+          <button class="close-btn" onclick="renderTeacherDashboard()"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="editQuizTitle" value="${editingQuizBuffer.title}">
+          </div>
+          <div class="form-group">
+            <label>Rewarding Passkey</label>
+            <input type="text" id="editQuizPasskey" value="${editingQuizBuffer.passkey || ''}">
+          </div>
+        </div>
+
+        <h4 style="color:var(--primary-navy); margin-bottom:8px;">Questions & Answer Keys:</h4>
+        ${qListHtml}
+
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="btn-primary" style="background:#16a34a;" onclick="saveEditedQuizChanges(${idx})">Save Changes & Recalculate Student Scores</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function updateQuestionText(qIdx, val) {
+  editingQuizBuffer.questions[qIdx].question = val;
+}
+
+function updateOptionText(qIdx, oIdx, val) {
+  editingQuizBuffer.questions[qIdx].options[oIdx] = val;
+}
+
+function updateCorrectAnswer(qIdx, val) {
+  editingQuizBuffer.questions[qIdx].correctAnswer = parseInt(val);
+}
+
+// Save & Auto-Recalculate Existing Submissions
+async function saveEditedQuizChanges(idx) {
+  editingQuizBuffer.title = document.getElementById("editQuizTitle").value;
+  editingQuizBuffer.passkey = document.getElementById("editQuizPasskey").value;
+
+  // Recalculate trigger on server
+  await API.post("updateQuizAndRecalculate", {
+    quiz: editingQuizBuffer
+  });
+
+  activeTeacherQuizzes[idx] = editingQuizBuffer;
+  alert("Quiz updated successfully! Sabhi students ke scores nayi answer key ke hisaab se recalculate ho gaye hain.");
+  renderTeacherDashboard();
 }
 
 // Eco-Friendly A4 Print Window
