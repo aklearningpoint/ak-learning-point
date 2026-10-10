@@ -1,12 +1,20 @@
 // Teacher Portal: Complete Management, Universal Parser, Live Leaderboards, Inline Correction, Student Ban & Auto Score Recalculation
 
-// Storage Helpers
 function getTeacherData(key, fallback) {
-  const val = localStorage.getItem(key);
-  return val ? JSON.parse(val) : fallback;
+  try {
+    const val = localStorage.getItem(key);
+    return val ? JSON.parse(val) : fallback;
+  } catch (e) {
+    return fallback;
+  }
 }
+
 function setTeacherData(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.warn("Storage full or unavailable", e);
+  }
 }
 
 let activeTeacherQuizzes = [];
@@ -14,7 +22,6 @@ let activeTeacherQuizzes = [];
 function openTeacherPortal() {
   if (typeof toggleDrawer === "function") toggleDrawer();
 
-  // Fail-safe: Chahe memory me ho ya na ho, 'pass' hamesha chalega
   const appConfig = getTeacherData("ak_app_config", { teacherPass: "pass" });
   const correctPass = (appConfig && appConfig.teacherPass) ? appConfig.teacherPass : "pass";
 
@@ -74,7 +81,7 @@ async function showTeacherSection(sec) {
             </select>
           </div>
           <div class="form-group">
-            <label>Class (All Standards Supported)</label>
+            <label>Class</label>
             <select id="tqClass">
               <option value="Play">Play</option>
               <option value="Nur">Nursery</option>
@@ -156,7 +163,7 @@ async function showTeacherSection(sec) {
 
         <div class="form-group">
           <label>Paste Questions Text (Any AI / Book Format)</label>
-          <textarea id="tqRawText" rows="7" style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:8px; font-family:monospace;" placeholder="Example:&#10;Q1. What is the process of food making in plants?&#10;a) Respiration&#10;b) Photosynthesis&#10;c) Transpiration&#10;d) Nutrition&#10;Ans: b"></textarea>
+          <textarea id="tqRawText" rows="7" style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:8px; font-family:monospace;" placeholder="Example:&#10;Q1. What is the capital of India?&#10;a) Mumbai&#10;b) New Delhi&#10;c) Kolkata&#10;d) Chennai&#10;Ans: b"></textarea>
         </div>
 
         <button class="btn-primary" style="background:#7c3aed;" onclick="parseRawQuestions()"><i class="fas fa-magic"></i> Parse Questions</button>
@@ -164,11 +171,9 @@ async function showTeacherSection(sec) {
       </div>
     `;
   } else if (sec === 'list') {
-    // 1. Instant Local Display
     activeTeacherQuizzes = getTeacherData("ak_teacher_quizzes", []);
     renderTeacherQuizList();
 
-    // 2. Background Sync
     try {
       const res = await API.get("getQuizzes", { allStatus: "true" });
       if (res && res.data && res.data.length > 0) {
@@ -261,7 +266,6 @@ function toggleRewardingField() {
   document.getElementById("rewardingPassContainer").style.display = chk ? "block" : "none";
 }
 
-// Universal Multi-Pattern Text Parser
 let parsedQuestionsBuffer = [];
 
 function parseRawQuestions() {
@@ -313,7 +317,7 @@ function renderParsedPreview() {
 
   container.innerHTML = `
     <div style="background:#f1f5f9; padding:12px; border-radius:8px;">
-      <h4 style="color:#16a34a; margin-bottom:8px;">✅ Parsed ${parsedQuestionsBuffer.length} Questions:</h4>
+      <h4 style="color:#16a34a; margin-bottom:8px;">Parsed Questions (${parsedQuestionsBuffer.length}):</h4>
       ${parsedQuestionsBuffer.map((q, idx) => `
         <div style="padding:8px 0; border-bottom:1px solid #cbd5e1; font-size:0.9rem;">
           <strong>Q${idx + 1}:${q.question}</strong><br>
@@ -352,19 +356,16 @@ async function saveParsedQuiz(status) {
     questions: parsedQuestionsBuffer
   };
 
-  // 1. Instant Local Persistence
   activeTeacherQuizzes = getTeacherData("ak_teacher_quizzes", []);
   activeTeacherQuizzes.unshift(newQuiz);
   setTeacherData("ak_teacher_quizzes", activeTeacherQuizzes);
 
-  // 2. Background Cloud Sync
   API.post("saveQuiz", newQuiz);
 
   alert(`Quiz successfully saved as ${status}!`);
   showTeacherSection('list');
 }
 
-// 1-Click Publish / Unpublish Toggle
 async function togglePublishStatus(idx) {
   const quiz = activeTeacherQuizzes[idx];
   const newStatus = quiz.status === 'published' ? 'draft' : 'published';
@@ -375,10 +376,9 @@ async function togglePublishStatus(idx) {
   renderTeacherQuizList();
 }
 
-// Permanent Quiz Delete
 async function deleteQuizPermanently(idx) {
   const quiz = activeTeacherQuizzes[idx];
-  if (confirm(`Kya aap "${quiz.title}" ko permanently delete karna chahte hain? Sabhi records hat jayenge.`)) {
+  if (confirm(`Kya aap "${quiz.title}" ko permanently delete karna chahte hain?`)) {
     activeTeacherQuizzes.splice(idx, 1);
     setTeacherData("ak_teacher_quizzes", activeTeacherQuizzes);
     API.post("deleteQuiz", { id: quiz.id });
@@ -386,7 +386,6 @@ async function deleteQuizPermanently(idx) {
   }
 }
 
-// Live Leaderboard View
 async function openQuizLeaderboard(idx) {
   const quiz = activeTeacherQuizzes[idx];
   const dynamicView = document.getElementById("dynamicView");
@@ -408,10 +407,8 @@ async function openQuizLeaderboard(idx) {
     </div>
   `;
 
-  // 1. Local submissions filter
   const localAttempts = (getTeacherData("ak_student_attempts", [])).filter(a => a.quizId === quiz.id);
 
-  // 2. Remote submissions fallback
   let remoteAttempts = [];
   try {
     const res = await API.get("getLeaderboard", { quizId: quiz.id });
@@ -421,7 +418,7 @@ async function openQuizLeaderboard(idx) {
   }
 
   const allParticipants = [...localAttempts, ...remoteAttempts];
-  const participants = Array.from(new Map(allParticipants.map(p => [p.mobile + "_" + (p.timestamp || p.id), p])).values());
+  const participants = Array.from(new Map(allParticipants.map(p => [(p.mobile || '') + "_" + (p.timestamp || p.id), p])).values());
   const container = document.getElementById("leaderboardListContainer");
 
   if (participants.length === 0) {
@@ -429,7 +426,6 @@ async function openQuizLeaderboard(idx) {
     return;
   }
 
-  // Sort by Score descending
   participants.sort((a, b) => Number(b.score) - Number(a.score));
 
   container.innerHTML = `
@@ -465,7 +461,6 @@ async function openQuizLeaderboard(idx) {
   `;
 }
 
-// Student Sheet Details Modal
 function viewParticipantAnswers(participant, quiz) {
   let solHtml = quiz.questions.map((q, idx) => {
     const userChoice = participant.answers ? participant.answers[idx] : undefined;
@@ -497,7 +492,6 @@ function viewParticipantAnswers(participant, quiz) {
   `;
 }
 
-// Delete Participant Attempt Record
 async function deleteParticipantRecord(quizId, identifier, quizIdx) {
   if (confirm("Kya aap is student ke result ko leaderboard se delete karna chahte hain?")) {
     let attempts = getTeacherData("ak_student_attempts", []);
@@ -509,7 +503,6 @@ async function deleteParticipantRecord(quizId, identifier, quizIdx) {
   }
 }
 
-// Quiz Details & Question Editing with Auto Score Recalculation
 let editingQuizBuffer = null;
 
 function openQuizEditorModal(idx) {
@@ -583,7 +576,6 @@ function updateCorrectAnswer(qIdx, val) {
   editingQuizBuffer.questions[qIdx].correctAnswer = parseInt(val);
 }
 
-// Save & Auto-Recalculate Existing Submissions
 async function saveEditedQuizChanges(idx) {
   editingQuizBuffer.title = document.getElementById("editQuizTitle").value;
   editingQuizBuffer.passkey = document.getElementById("editQuizPasskey").value;
@@ -591,7 +583,6 @@ async function saveEditedQuizChanges(idx) {
   activeTeacherQuizzes[idx] = editingQuizBuffer;
   setTeacherData("ak_teacher_quizzes", activeTeacherQuizzes);
 
-  // Recalculate student scores locally across existing submissions
   let allAttempts = getTeacherData("ak_student_attempts", []);
   const negMark = parseFloat(editingQuizBuffer.negativeMarking || 0);
   const totalQ = editingQuizBuffer.questions.length;
@@ -618,7 +609,6 @@ async function saveEditedQuizChanges(idx) {
 
   setTeacherData("ak_student_attempts", allAttempts);
 
-  // Cloud API trigger for backend recalculation
   API.post("updateQuizAndRecalculate", {
     quiz: editingQuizBuffer
   });
@@ -627,7 +617,6 @@ async function saveEditedQuizChanges(idx) {
   renderTeacherDashboard();
 }
 
-// Eco-Friendly A4 Print Window
 function printEcoFriendlyQuiz(title) {
   const printWindow = window.open("", "_blank");
   printWindow.document.write(`
