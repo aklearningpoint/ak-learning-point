@@ -14,15 +14,15 @@ let activeTeacherQuizzes = [];
 function openTeacherPortal() {
   if (typeof toggleDrawer === "function") toggleDrawer();
 
-  // Read dynamic teacher password from Admin Config
+  // Fail-safe: Chahe memory me ho ya na ho, 'pass' hamesha chalega
   const appConfig = getTeacherData("ak_app_config", { teacherPass: "pass" });
-  const correctPass = appConfig.teacherPass || "pass";
+  const correctPass = (appConfig && appConfig.teacherPass) ? appConfig.teacherPass : "pass";
 
-  const enteredPass = prompt("Enter Teacher Access Password:");
-  if (enteredPass === correctPass) {
+  const enteredPass = prompt("Enter Teacher Access Password (Default: pass):");
+  if (enteredPass === correctPass || enteredPass === "pass") {
     renderTeacherDashboard();
   } else if (enteredPass !== null) {
-    alert("Incorrect Teacher Password!");
+    alert("Incorrect Teacher Password! (Default is: pass)");
   }
 }
 
