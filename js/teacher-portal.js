@@ -18,6 +18,8 @@ function setTeacherData(key, data) {
 }
 
 let activeTeacherQuizzes = [];
+let currentLeaderboardParticipants = [];
+let currentLeaderboardQuiz = null;
 
 function openTeacherPortal() {
   if (typeof toggleDrawer === "function") toggleDrawer();
@@ -388,6 +390,7 @@ async function deleteQuizPermanently(idx) {
 
 async function openQuizLeaderboard(idx) {
   const quiz = activeTeacherQuizzes[idx];
+  currentLeaderboardQuiz = quiz;
   const dynamicView = document.getElementById("dynamicView");
 
   dynamicView.innerHTML = `
@@ -418,15 +421,15 @@ async function openQuizLeaderboard(idx) {
   }
 
   const allParticipants = [...localAttempts, ...remoteAttempts];
-  const participants = Array.from(new Map(allParticipants.map(p => [(p.mobile || '') + "_" + (p.timestamp || p.id), p])).values());
+  currentLeaderboardParticipants = Array.from(new Map(allParticipants.map(p => [(p.mobile || '') + "_" + (p.timestamp || p.id), p])).values());
   const container = document.getElementById("leaderboardListContainer");
 
-  if (participants.length === 0) {
+  if (currentLeaderboardParticipants.length === 0) {
     container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">Abhi kisi student ne is quiz ko attempt nahi kiya hai.</p>`;
     return;
   }
 
-  participants.sort((a, b) => Number(b.score) - Number(a.score));
+  currentLeaderboardParticipants.sort((a, b) => Number(b.score) - Number(a.score));
 
   container.innerHTML = `
     <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
@@ -441,10 +444,11 @@ async function openQuizLeaderboard(idx) {
         </tr>
       </thead>
       <tbody>
-        ${participants.map((p, pIdx) => `
+        ${currentLeaderboardParticipants.map((p, pIdx) => `
           <tr style="border-bottom:1px solid #e2e8f0;">
             <td style="padding:6px; font-weight:700;">#${pIdx + 1}</td>
-            <td style="padding:6px; cursor:pointer; color:var(--brand-blue); font-weight:600;" onclick='viewParticipantAnswers(${JSON.stringify(p)}, ${JSON.stringify(quiz)})'>${p.studentName} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i>
+            <td style="padding:6px; cursor:pointer; color:var(--brand-blue); font-weight:600;" onclick="viewParticipantByIndex(${pIdx})">
+              ${p.studentName} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i>
             </td>
             <td style="padding:6px;">${p.mobile || 'N/A'}</td>
             <td style="padding:6px; font-weight:700; color:#16a34a;">${p.score}/${p.totalMarks}</td>
@@ -461,7 +465,11 @@ async function openQuizLeaderboard(idx) {
   `;
 }
 
-function viewParticipantAnswers(participant, quiz) {
+function viewParticipantByIndex(pIdx) {
+  const participant = currentLeaderboardParticipants[pIdx];
+  const quiz = currentLeaderboardQuiz;
+  if (!participant || !quiz) return;
+
   let solHtml = quiz.questions.map((q, idx) => {
     const userChoice = participant.answers ? participant.answers[idx] : undefined;
     const isCorrect = userChoice === q.correctAnswer;
